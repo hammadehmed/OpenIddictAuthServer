@@ -7,7 +7,8 @@ using OpenIddict.Validation.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??
+    throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 builder.Services.AddControllers();
 
@@ -46,46 +47,46 @@ builder.Services.AddOpenIddict()
 
         .AddServer(options =>
         {
-            // Enable the token endpoint.
             options.SetTokenEndpointUris("connect/token");
 
-            // Enable the password flow.
             options.AllowPasswordFlow();
 
             options.AllowRefreshTokenFlow();
 
-            // Accept anonymous clients (i.e clients that don't send a client_id).
             options.AcceptAnonymousClients();
 
-            options.DisableAccessTokenEncryption();
+            options.UseReferenceAccessTokens();
+            options.UseReferenceRefreshTokens();
 
-            options.RegisterScopes(OpenIddictConstants.Scopes.Email, OpenIddictConstants.Scopes.Profile, OpenIddictConstants.Scopes.OpenId, OpenIddictConstants.Scopes.Roles, OpenIddictConstants.Scopes.OfflineAccess);
+            options.RegisterScopes(OpenIddictConstants.Scopes.Email, OpenIddictConstants.Scopes.Profile, OpenIddictConstants.Scopes.OpenId,
+                OpenIddictConstants.Scopes.Roles, OpenIddictConstants.Scopes.OfflineAccess);
 
-            // Register the signing and encryption credentials.
             options.AddDevelopmentEncryptionCertificate()
                    .AddDevelopmentSigningCertificate();
 
-            // Register the ASP.NET Core host and configure the ASP.NET Core options.
             options.UseAspNetCore()
                    .EnableTokenEndpointPassthrough();
+
+            options.SetIssuer(new Uri("https://localhost:7243/"));
         })
 
-        // Register the OpenIddict validation components.
         .AddValidation(options =>
         {
-            // Import the configuration from the local OpenIddict server instance.
             options.UseLocalServer();
 
-            // Register the ASP.NET Core host.
             options.UseAspNetCore();
         });
 
-builder.Services.AddAuthentication(options => options.DefaultAuthenticateScheme = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme;
+});
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("OperatorRole", policy => policy.RequireRole("Operator"));
-    options.AddPolicy("AdministratorRole", policy => policy.RequireRole("Admin", "Operator"));
+    options.AddPolicy("AdministratorRole", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("OperatorRole", policy => policy.RequireRole("Operator", "Admin"));
 });
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
@@ -94,7 +95,6 @@ builder.Services.AddRazorPages();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseMigrationsEndPoint();
@@ -102,7 +102,6 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseExceptionHandler("/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 

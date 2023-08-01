@@ -16,9 +16,7 @@ namespace OpenIddictPasswordFlow.Controllers
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
 
-        public AuthorizationController(
-            SignInManager<ApplicationUser> signInManager,
-            UserManager<ApplicationUser> userManager)
+        public AuthorizationController(SignInManager<ApplicationUser> signInManager, UserManager<ApplicationUser> userManager)
         {
             _signInManager = signInManager;
             _userManager = userManager;
@@ -52,13 +50,13 @@ namespace OpenIddictPasswordFlow.Controllers
                     .SetClaims(Claims.Role, (await _userManager.GetRolesAsync(user)).ToImmutableArray());
 
                     identity.SetScopes(new[]
-            {
-                Scopes.OpenId,
-                Scopes.Email,
-                Scopes.Profile,
-                Scopes.Roles,
-                Scopes.OfflineAccess
-            }.Intersect(request.GetScopes()));
+                    {
+                        Scopes.OpenId,
+                        Scopes.Email,
+                        Scopes.Profile,
+                        Scopes.Roles,
+                        Scopes.OfflineAccess
+                    }.Intersect(request.GetScopes()));
 
                     identity.SetDestinations(GetDestinations);
 
@@ -72,7 +70,6 @@ namespace OpenIddictPasswordFlow.Controllers
             }
             else if (request.IsRefreshTokenGrantType())
             {
-                // Retrieve the claims principal stored in the refresh token.
                 var claimsPrincipal = (await HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme)).Principal;
 
                 var user = await _userManager.FindByIdAsync(claimsPrincipal.GetClaim(Claims.Subject));
@@ -88,7 +85,6 @@ namespace OpenIddictPasswordFlow.Controllers
                     return Forbid(properties, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
                 }
 
-                // Ensure the user is still allowed to sign in.
                 if (!await _signInManager.CanSignInAsync(user))
                 {
                     var properties = new AuthenticationProperties(new Dictionary<string, string>
@@ -105,7 +101,6 @@ namespace OpenIddictPasswordFlow.Controllers
                     nameType: Claims.Name,
                     roleType: Claims.Role);
 
-                // Override the user claims present in the principal in case they changed since the refresh token was issued.
                 identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
                         .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
                         .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user))
@@ -121,10 +116,6 @@ namespace OpenIddictPasswordFlow.Controllers
 
         private static IEnumerable<string> GetDestinations(Claim claim)
         {
-            // Note: by default, claims are NOT automatically included in the access and identity tokens.
-            // To allow OpenIddict to serialize them, you must attach them a destination, that specifies
-            // whether they should be included in access tokens, in identity tokens or in both.
-
             switch (claim.Type)
             {
                 case Claims.Name:
@@ -151,7 +142,6 @@ namespace OpenIddictPasswordFlow.Controllers
 
                     yield break;
 
-                // Never include the security stamp in the access and identity tokens, as it's a secret value.
                 case "AspNet.Identity.SecurityStamp": yield break;
 
                 default:
